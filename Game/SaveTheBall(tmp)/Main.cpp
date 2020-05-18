@@ -11,6 +11,11 @@ void Main()
 
 //各シーンを表す列挙型
 enum Scenes {
+	PLAYING_GAME//ゲーム中
+	,TITLE//タイトル
+	,RESULT//結果表示(点数など)
+	,LANKING//結果表示(順位)
+	
 
 };
 //現在のシーン
