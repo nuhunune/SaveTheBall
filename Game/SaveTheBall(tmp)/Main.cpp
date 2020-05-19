@@ -106,14 +106,14 @@ class Game {
 	};
 public:
 	Array<Ball> balls;
-	static void cNumTest(double a1, double b1, double a2, double b2) {//複素数クラスのテスト用
-		ComplexNumber c1(a1, b1);
-		ComplexNumber c2(a2, b2);
-		Print << c1.show() << U"+" << c2.show() << U"=" << ComplexNumber::addition(&c1, &c2).show();
-		Print << c1.show() << U"-" << c2.show() << U"=" << ComplexNumber::subtraction(&c1, &c2).show();
-		Print << c1.show() << U"*" << c2.show() << U"=" << ComplexNumber::multiplication(&c1, &c2).show();
-		Print << c1.show() << U"/" << c2.show() << U"=" << ComplexNumber::dividion(&c1, &c2).show();
-	}
+	//static void cNumTest(double a1, double b1, double a2, double b2) {//複素数クラスのテスト用
+	//	ComplexNumber c1(a1, b1);
+	//	ComplexNumber c2(a2, b2);
+	//	Print << c1.show() << U"+" << c2.show() << U"=" << ComplexNumber::addition(&c1, &c2).show();
+	//	Print << c1.show() << U"-" << c2.show() << U"=" << ComplexNumber::subtraction(&c1, &c2).show();
+	//	Print << c1.show() << U"*" << c2.show() << U"=" << ComplexNumber::multiplication(&c1, &c2).show();
+	//	Print << c1.show() << U"/" << c2.show() << U"=" << ComplexNumber::dividion(&c1, &c2).show();
+	//}
 	
 
 };
@@ -121,8 +121,6 @@ public:
 //メイン関数
 void Main()
 {
-	double a1=4, b1=3, a2=1, b2=5;//複素数のテスト用
-	Game::cNumTest(a1,b1,a2,b2);
 
 	while (System::Update())
 	{
