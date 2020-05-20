@@ -38,32 +38,30 @@ class Game {
 			this->a = a;
 			this->b = b;
 		}
-		//5/19 20:32 static全部なくていいようにした方がいいかも
-		static double abs(ComplexNumber* arg) {//絶対値
-			return std::sqrt(((*arg).a) * ((*arg).a)+ ((*arg).b)* ((*arg).b));
+		double abs() {//絶対値
+			return std::sqrt(a * a + b * b);
 		}
-		static ComplexNumber unitVector(ComplexNumber* arg) {//偏角が引数と等しく絶対値が1の複素数を返す
-			double absOfArg = ComplexNumber::abs(arg);
-			return ComplexNumber((*arg).a / absOfArg, (*arg).b / absOfArg);
+		ComplexNumber unitVector() {//偏角が引数と等しく絶対値が1の複素数を返す
+			double abs = (*this).abs();
+			return ComplexNumber((*this).a / abs, (*this).b / abs);
 		}
-		static ComplexNumber addition(ComplexNumber* arg1, ComplexNumber* arg2) {//加算(arg1+arg2)
-			return ComplexNumber((*arg1).a + (*arg2).a, (*arg1).b + (*arg2).b);
+		ComplexNumber operator+(ComplexNumber rightOperand) {//加算演算子+
+			return ComplexNumber(a + rightOperand.a, b + rightOperand.b);
 		}
-		static ComplexNumber subtraction(ComplexNumber* arg1, ComplexNumber* arg2) {//減算(arg1-arg2)
-			return ComplexNumber((*arg1).a - (*arg2).a, (*arg1).b - (*arg2).b);
+		ComplexNumber operator-(ComplexNumber rightOperand) {//減算演算子-
+			return ComplexNumber(a - rightOperand.a, b - rightOperand.b);
 		}
-		static ComplexNumber multiplication(ComplexNumber* arg1, ComplexNumber* arg2) {//乗算(arg1*arg2)
-			double a1 = (*arg1).a;//各引数の実部と虚部を変数に格納
-			double b1 = (*arg1).b;
-			double a2 = (*arg2).a;
-			double b2 = (*arg2).b;
-			return ComplexNumber(a1*a2-b1*b2,a1*b2+a2*b1);
+		ComplexNumber operator*(ComplexNumber rightOperand) {//乗算演算子*
+			double a2 = rightOperand.a;
+			double b2 = rightOperand.b;
+			return ComplexNumber(a * a2 - b * b2, a * b2 + a2 * b);
 		}
-		static ComplexNumber dividion(ComplexNumber* arg1, ComplexNumber* arg2) {//割り算(arg1/arg2)
-			double absOfArg2 = ComplexNumber::abs(arg2);
-			ComplexNumber* reciprocalOfArg2 = &ComplexNumber((*arg2).a / (absOfArg2 * absOfArg2), -(*arg2).b / (absOfArg2 * absOfArg2));//arg2の逆数
-			return ComplexNumber::multiplication(arg1, reciprocalOfArg2);//逆数との積を返す
+		ComplexNumber operator/(ComplexNumber rightOperand) {//割り算(arg1/arg2)
+			double absOfRightOperand = rightOperand.abs();
+			ComplexNumber reciprocalOfRightOperand = ComplexNumber(rightOperand.a / (absOfRightOperand * absOfRightOperand), -rightOperand.b / (absOfRightOperand * absOfRightOperand));//右オペランドの逆数
+			return (*this)*reciprocalOfRightOperand;//逆数との積を返す
 		}
+		
 		String show() {//自分自身を(a+bi)のフォーマットの文字列で返す
 			String stringA = ToString(a);
 			String stringB = ToString(b);
@@ -108,7 +106,7 @@ class Game {
 			描画をいつやるかは未定
 			注：二つ以上の衝突が同じボールに対して同時に起こると多分バグる
 			*/
-			const int numberOfBalls = balls.size();//処理するボールの個数
+			const int numberOfBalls = (int)balls.size();//処理するボールの個数
 			for (int i = 0; i < numberOfBalls; i++) {//画面端への衝突時の方向変更
 				if (balls[i].x <= leftEdgeOfMainScreen+ballSize) {//左端に衝突するとき
 					balls[i].changeDirection(-balls[i].moveByX, balls[i].moveByY);//x軸方向の速さをマイナス一倍
@@ -143,10 +141,10 @@ public:
 	//static void cNumTest(double a1, double b1, double a2, double b2) {//複素数クラスのテスト用
 	//	ComplexNumber c1(a1, b1);
 	//	ComplexNumber c2(a2, b2);
-	//	Print << c1.show() << U"+" << c2.show() << U"=" << ComplexNumber::addition(&c1, &c2).show();
-	//	Print << c1.show() << U"-" << c2.show() << U"=" << ComplexNumber::subtraction(&c1, &c2).show();
-	//	Print << c1.show() << U"*" << c2.show() << U"=" << ComplexNumber::multiplication(&c1, &c2).show();
-	//	Print << c1.show() << U"/" << c2.show() << U"=" << ComplexNumber::dividion(&c1, &c2).show();
+	//	Print << c1.show() << U"+" << c2.show() << U"=" << (c1+c2).show();
+	//	Print << c1.show() << U"-" << c2.show() << U"=" << (c1-c2).show();
+	//	Print << c1.show() << U"*" << c2.show() << U"=" << (c1*c2).show();
+	//	Print << c1.show() << U"/" << c2.show() << U"=" << (c1/c2).show();
 	//}
 	static void addBall() {//ballのテスト用
 		balls << Ball(600, 450, 30, 30);
@@ -159,8 +157,6 @@ public:
 void Main()
 {
 	Window::Resize(Size(1200,900));
-	Game::addBall();
-
 	while (System::Update())
 	{
 
