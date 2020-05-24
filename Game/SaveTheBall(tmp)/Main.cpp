@@ -25,8 +25,13 @@ class Result {
 //ゲームの本体クラス
 class Game {
 	static constexpr int ballSize = 100;//ボールの大きさ(すべて同じ)
-	static constexpr double speedOfBalls = 15;//1フレーム当たりのボールの移動距離(すべて同じ)
-	static constexpr int rightEdgeOfMainScreen=1200, leftEdgeOfMainScreen=0, topEdgeOfMainScreen=0, bottomEdgeOfMainScreen=900;
+	static constexpr double speedOfBalls = 3;//1フレーム当たりのボールの移動距離(すべて同じ)
+	static constexpr int rightEdgeOfMainScreen=1200, leftEdgeOfMainScreen=0, topEdgeOfMainScreen=0, bottomEdgeOfMainScreen=900;//ゲーム本体画面の範囲
+	static constexpr int safeAreaSize = 115;//安全エリアの大きさ
+	static constexpr int okAreaSize = 130;//大丈夫エリアの大きさ
+	static constexpr int maxHP = 1000;
+	int restHP;
+
 
 	struct ComplexNumber {//複素数を扱う構造体
 		//扱う複素数はiを虚数単位としてa+biとする
@@ -87,7 +92,7 @@ class Game {
 		}
 		
 		static void changeTheDirectionOfBumpedBalls(Ball* ball1, Ball* ball2) {//衝突した2つのボールの方向を変更　引数の2つのボールがぶつかっている前提
-			//複素数を実装してからやる
+			//物理学的におかしいから余裕があったら修正
 			double x1 = (*ball1).x;//それぞれの玉の座標
 			double y1 = (*ball1).y;
 			double x2 = (*ball2).x;
@@ -142,14 +147,23 @@ class Game {
 			balls[i].x = balls[i].x + balls[i].moveByX;
 			balls[i].y = balls[i].y + balls[i].moveByY;
 		}
-		/*Print << balls[0].moveByX;
-		Print << balls[0].moveByY;*/
+		//ボールの描画
 		for (int i = 0; i < numberOfBalls; i++) {
-			Circle(balls[i].x, balls[i].y, ballSize).draw(Palette::White);
+			if (i == 0) {
+				Circle(balls[i].x, balls[i].y, ballSize).draw(Palette::Yellowgreen);
+			}
+			else {
+				Circle(balls[i].x, balls[i].y, ballSize).draw(Palette::White);
+			}
+			
 		}
 	}
+	void gameOver() {
+		//ライフ0になった時の処理
+		Print << U"GameOver!";
+	}
 public:
-	Array<Ball> balls;
+	Array<Ball> balls;//ボール群　0番目が自分が囲うボール
 	//static void cNumTest(double a1, double b1, double a2, double b2) {//複素数クラスのテスト用
 	//	ComplexNumber c1(a1, b1);
 	//	ComplexNumber c2(a2, b2);
@@ -158,8 +172,33 @@ public:
 	//	Print << c1.show() << U"*" << c2.show() << U"=" << (c1*c2).show();
 	//	Print << c1.show() << U"/" << c2.show() << U"=" << (c1/c2).show();
 	//}
+	void init() {//ゲームの初期化
+		restHP = maxHP;
+		balls << Ball(800, 450, 2, 3);
+		balls << Ball(400, 450, -2, 4);
+	}
 	void update(){//ゲームの更新
+		Point cursor = Cursor::Pos();
+		//各エリア(自機)の描画
+		Circle okArea(cursor, okAreaSize);
+		Circle safeArea(cursor, safeAreaSize);
+		okArea.draw(Palette::Yellow).drawFrame(0, 10, Palette::Red);
+		safeArea.draw(Palette::Skyblue);
+		//ボールの更新
 		updateBall();
+
+		//判定
+		Circle ballToSurround(balls[0].x, balls[0].y, ballSize);
+		if (safeArea.contains(ballToSurround)) {
+			restHP++;
+		}
+		else if (!okArea.contains(ballToSurround)) {
+			restHP--;
+		}
+		if (restHP == 0/* || !okArea.intersects(ballToSurround)*/) {//自機が完全に外に出たかライフが0なら
+			gameOver();
+		}
+		Print << restHP;
 	}
 	void test() {//ボールのテスト用
 		balls << Ball(800, 450, 2, 3);
@@ -174,7 +213,7 @@ void Main()
 {
 	Window::Resize(Size(1200,900));//windowのサイズは1200x900にする(あとで上の方に定数用意するかも)
 	Game game;//ゲーム本体の本体
-	game.test();
+	game.init();
 	while (System::Update())//switch文で分岐しよう
 	{
 		game.update();
