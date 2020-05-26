@@ -25,11 +25,12 @@ class Result {
 //ゲームの本体クラス
 class Game {
 	static constexpr int ballSize = 100;//ボールの大きさ(すべて同じ)
-	static constexpr double speedOfBalls = 3;//1フレーム当たりのボールの移動距離(すべて同じ)
+	static constexpr double speedOfBalls = 4;//1フレーム当たりのボールの移動距離(すべて同じ)
 	static constexpr int rightEdgeOfMainScreen=1200, leftEdgeOfMainScreen=0, topEdgeOfMainScreen=0, bottomEdgeOfMainScreen=900;//ゲーム本体画面の範囲
 	static constexpr int safeAreaSize = 115;//安全エリアの大きさ
 	static constexpr int okAreaSize = 130;//大丈夫エリアの大きさ
-	static constexpr int maxHP = 1000;
+	static constexpr int maxHP = 1000;//HPの最大値
+	static constexpr int maxNumberOfBall = 10;//ボールの最大数
 	int restHP;
 
 
@@ -111,6 +112,7 @@ class Game {
 			(*ball2).moveByX = newDirectionOfBall2.a;
 			(*ball2).moveByY = newDirectionOfBall2.b;
 		}
+		
 
 	
 		Ball(double x,double y,double moveByX,double moveByY) {
@@ -120,6 +122,29 @@ class Game {
 			this->moveByY = moveByY;
 		}
 	};
+	void addBall() {//ボールの追加
+		Circle tmpCircle;//一時的に、他の円と交差するか調べるために作る円
+		int32 randomX;//ランダム生成した座標を格納する変数
+		int32 randomY;
+		bool ok;//どの円にも潜り込まないことを確かめる
+		while (true)
+		{
+			randomX = Random<int32>(leftEdgeOfMainScreen + ballSize, rightEdgeOfMainScreen - ballSize);//座標をランダム生成
+			randomY = Random<int32>(topEdgeOfMainScreen + ballSize, bottomEdgeOfMainScreen - ballSize);
+			ok = true;
+			for (int i = 0; i < balls.size(); i++) {
+				if (std::sqrt((balls[i].x - randomX) * (balls[i].x - randomX) + (balls[i].y - randomY) * (balls[i].y - randomY)) < ballSize * 2 + 10) {
+					ok = false;
+				}
+			}
+			if (ok) {
+				balls << Ball(randomX, randomY, 0, 4);
+				break;
+			}
+		}
+		Print << U"ok";
+
+	}
 	void updateBall() {//ボールの位置の更新と描画
 		const int32 numberOfBalls = balls.size();//処理するボールの個数
 		for (int i = 0; i < numberOfBalls; i++) {//画面端への衝突時の方向変更
@@ -184,19 +209,27 @@ public:
 		Circle safeArea(cursor, safeAreaSize);
 		okArea.draw(Palette::Yellow).drawFrame(0, 10, Palette::Red);
 		safeArea.draw(Palette::Skyblue);
+
+		//クリックされたらボールを追加
+		if (MouseL.down()&&balls.size()<maxNumberOfBall) {
+			addBall();
+		}
 		//ボールの更新
 		updateBall();
 
 		//判定
 		Circle ballToSurround(balls[0].x, balls[0].y, ballSize);
 		if (safeArea.contains(ballToSurround)) {
-			restHP++;
+			restHP+=3;
 		}
 		else if (!okArea.contains(ballToSurround)) {
 			restHP--;
 		}
 		if (restHP == 0/* || !okArea.intersects(ballToSurround)*/) {//自機が完全に外に出たかライフが0なら
 			gameOver();
+		}
+		if (restHP > maxHP) {
+			restHP = maxHP;
 		}
 		Print << restHP;
 	}
