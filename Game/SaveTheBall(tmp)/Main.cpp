@@ -1,4 +1,8 @@
 ﻿# include <Siv3D.hpp> // OpenSiv3D v0.4.1
+static constexpr int windowWidth = 1200;
+static constexpr int windowHeight = 900;
+int score;//ゲームの点数
+
 
 //各シーンを表す列挙型
 enum Scenes {
@@ -6,7 +10,8 @@ enum Scenes {
 	,TITLE//タイトル
 	,RESULT//結果表示(点数など)
 	,LANKING//結果表示(順位)
-	
+	,GAMEOVER//HPが0になったとき
+	,TIMEOVER//残り時間が0になったとき
 
 };
 //現在のシーン
@@ -19,19 +24,29 @@ class Title {
 
 //結果表示用クラス
 class Result {
-
+	const Font font200 = Font(200);
+public:
+	void gameOver() {
+		font200(U"Game Over!").draw(Arg::center = Vec2(600,450));
+	}
+	void timeUp() {
+		font200(U"Time Up!").draw(Arg::center = Vec2(600, 450));
+	}
 };
 
 //ゲームの本体クラス
 class Game {
-	static constexpr int ballSize = 100;//ボールの大きさ(すべて同じ)
+	static constexpr int ballSize = 70;//ボールの大きさ(すべて同じ)
 	static constexpr double speedOfBalls = 4;//1フレーム当たりのボールの移動距離(すべて同じ)
-	static constexpr int rightEdgeOfMainScreen=1200, leftEdgeOfMainScreen=0, topEdgeOfMainScreen=0, bottomEdgeOfMainScreen=900;//ゲーム本体画面の範囲
-	static constexpr int safeAreaSize = 115;//安全エリアの大きさ
-	static constexpr int okAreaSize = 130;//大丈夫エリアの大きさ
+	static constexpr int rightEdgeOfMainScreen=1200, leftEdgeOfMainScreen=200, topEdgeOfMainScreen=0, bottomEdgeOfMainScreen=750;//ゲーム本体画面の範囲
+	static constexpr int safeAreaSize = 85;//安全エリアの大きさ
+	static constexpr int okAreaSize = 100;//大丈夫エリアの大きさ
 	static constexpr int maxHP = 1000;//HPの最大値
-	static constexpr int maxNumberOfBall = 10;//ボールの最大数
+	static constexpr int maxNumberOfBall = 9;//ボールの最大数 レベルの最大値でもある
+	static constexpr int timeLimit = 30;//制限時間の秒数
 	int restHP;
+	const Font font100 = Font(100);//フォント
+	Stopwatch stopwatch;
 
 
 	struct ComplexNumber {//複素数を扱う構造体
@@ -142,7 +157,6 @@ class Game {
 				break;
 			}
 		}
-		Print << U"ok";
 
 	}
 	void updateBall() {//ボールの位置の更新と描画
@@ -183,27 +197,20 @@ class Game {
 			
 		}
 	}
-	void gameOver() {
-		//ライフ0になった時の処理
-		Print << U"GameOver!";
-	}
+	
 public:
 	Array<Ball> balls;//ボール群　0番目が自分が囲うボール
-	//static void cNumTest(double a1, double b1, double a2, double b2) {//複素数クラスのテスト用
-	//	ComplexNumber c1(a1, b1);
-	//	ComplexNumber c2(a2, b2);
-	//	Print << c1.show() << U"+" << c2.show() << U"=" << (c1+c2).show();
-	//	Print << c1.show() << U"-" << c2.show() << U"=" << (c1-c2).show();
-	//	Print << c1.show() << U"*" << c2.show() << U"=" << (c1*c2).show();
-	//	Print << c1.show() << U"/" << c2.show() << U"=" << (c1/c2).show();
-	//}
 	void init() {//ゲームの初期化
 		restHP = maxHP;
+		score = 0;
+		stopwatch = Stopwatch(true);
 		balls << Ball(800, 450, 2, 3);
-		balls << Ball(400, 450, -2, 4);
 	}
 	void update(){//ゲームの更新
-		Point cursor = Cursor::Pos();
+		Rect(leftEdgeOfMainScreen, topEdgeOfMainScreen, rightEdgeOfMainScreen - leftEdgeOfMainScreen, bottomEdgeOfMainScreen - topEdgeOfMainScreen).draw(Color(30,30,30));//ゲーム範囲を黒く塗る
+		Point cursor = Cursor::Pos();//カーソル位置
+		double restTimeFloat = timeLimit - stopwatch.sF();//浮動小数点での残り時間
+		double restTimeInteger = timeLimit - stopwatch.s64();
 		//各エリア(自機)の描画
 		Circle okArea(cursor, okAreaSize);
 		Circle safeArea(cursor, safeAreaSize);
@@ -219,36 +226,94 @@ public:
 
 		//判定
 		Circle ballToSurround(balls[0].x, balls[0].y, ballSize);
-		if (safeArea.contains(ballToSurround)) {
-			restHP+=3;
+		if (safeArea.contains(ballToSurround)) {//安全エリア内にあるとき
+			restHP+=3;//HPを3増やす
+			score += balls.size() * 3;//スコアをレベル数の三倍増やす
 		}
-		else if (!okArea.contains(ballToSurround)) {
-			restHP--;
+		else if (!okArea.contains(ballToSurround)) {//大丈夫エリア外の時
+			restHP--;//HPを1減らす
 		}
-		if (restHP == 0/* || !okArea.intersects(ballToSurround)*/) {//自機が完全に外に出たかライフが0なら
-			gameOver();
+		else {//ちょうど大丈夫エリアにいるとき
+			score += balls.size();//スコアをレベル数増やす
+		}
+		if (restHP == 0) {//ライフが0なら
+			Scene::SetBackground(Palette::Black);
+			scene = GAMEOVER;//シーンチェンジ
+			return;
+		}
+		else if (restTimeInteger == 0) {
+			Scene::SetBackground(Palette::Black);
+			scene = TIMEOVER;
+			return;
 		}
 		if (restHP > maxHP) {
 			restHP = maxHP;
 		}
-		Print << restHP;
-	}
-	void test() {//ボールのテスト用
-		balls << Ball(800, 450, 2, 3);
-		balls << Ball(400, 450, -2, 4);
+		//スコアの描画
+		String scoreText = U"Score:" +ToString(score);
+		font100(scoreText).draw(400, 750);
+		//残り時間の描画
+		font100(ToString(restTimeInteger)).draw(Arg::center=Vec2(100,100));//数字
+		//扇型の外周
+		if (restTimeFloat < timeLimit / 4.0) {//残り時間が四分の一以下の時
+			Circle(100, 100, 70).drawArc(0, (restTimeFloat / timeLimit) * 2 * std::_Pi, 0, 10, Palette::Red);
+		}
+		else if (restTimeFloat < timeLimit / 2.0) {//四分の一以上二分の一以下の時
+			Circle(100, 100, 70).drawArc(0, (restTimeFloat / timeLimit) * 2 * std::_Pi, 0, 10, Palette::Orange);
+		}
+		else {//それより多いとき
+			Circle(100, 100, 70).drawArc(0, (restTimeFloat / timeLimit) * 2 * std::_Pi, 0, 10, Palette::Yellowgreen);
+		}
 
+		//レベルの描画
+		font100(U"Lv." + ToString(balls.size())).draw(Arg::topCenter = Vec2(100, 150));
+		
+		//HPの描画
+		font100(U"HP").draw(Arg::topCenter = Vec2(100, 350));//HPという文字
+		Rect(Arg::topCenter(100, 500), 100, 350).drawFrame(0,10,Palette::Black);//枠
+		double propotionOfRestHP = ((double)restHP) / maxHP;
+		if (propotionOfRestHP < 0.25) {//残りHPが25パーセント以下なら
+			Rect(Arg::bottomCenter(100, 850), 100, 350 * propotionOfRestHP).draw(Palette::Red);//赤く
+		}
+		else if (propotionOfRestHP < 0.5) {
+			Rect(Arg::bottomCenter(100, 850), 100, 350 * propotionOfRestHP).draw(Palette::Orange);
+		}
+		else if (propotionOfRestHP < 0.75) {
+			Rect(Arg::bottomCenter(100, 850), 100, 350 * propotionOfRestHP).draw(Palette::Yellow);
+		}
+		else {
+			Rect(Arg::bottomCenter(100, 850), 100, 350 * propotionOfRestHP).draw(Palette::Blue);
+		}
 	}
-
 };
 
 //メイン関数
 void Main()
 {
-	Window::Resize(Size(1200,900));//windowのサイズは1200x900にする(あとで上の方に定数用意するかも)
+	Window::Resize(Size(windowWidth,windowHeight));//windowのサイズは1200x900にする(あとで上の方に定数用意するかも)
 	Game game;//ゲーム本体の本体
+	Result result;//結果表示用
 	game.init();
 	while (System::Update())//switch文で分岐しよう
 	{
-		game.update();
+		switch (scene)
+		{
+		case PLAYING_GAME:
+			Scene::SetBackground(Palette::Skyblue);
+			game.update();
+			break;
+		case TITLE:
+			break;
+		case RESULT:
+			break;
+		case LANKING:
+			break;
+		case GAMEOVER:
+			result.gameOver();
+			break;
+		case TIMEOVER:
+			result.timeUp();
+			break;
+		}
 	}
 }
