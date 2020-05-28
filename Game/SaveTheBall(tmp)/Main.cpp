@@ -9,7 +9,6 @@ enum Scenes {
 	PLAYING_GAME//ゲーム中
 	,TITLE//タイトル
 	,RESULT//結果表示(点数など)
-	,LANKING//結果表示(順位)
 	,GAMEOVER//HPが0になったとき
 	,TIMEOVER//残り時間が0になったとき
 
@@ -25,12 +24,29 @@ class Title {
 //結果表示用クラス
 class Result {
 	const Font font200 = Font(200);
+	const Font font50 = Font(50);
 public:
 	void gameOver() {
 		font200(U"Game Over!").draw(Arg::center = Vec2(600,450));
+		font50(U"クリックして下さい").draw(Arg::center = Vec2(600, 600));
+		if (MouseL.down()) {
+			scene = RESULT;
+		}
 	}
 	void timeUp() {
 		font200(U"Time Up!").draw(Arg::center = Vec2(600, 450));
+		font50(U"クリックして下さい").draw(Arg::center = Vec2(600, 600));
+		if (MouseL.down()) {
+			scene = RESULT;
+		}
+	}
+	void showResult() {
+		font200(ToString(score)+U"点!").draw(Arg::center = Vec2(600, 350));
+		font50(U"クリックしてタイトルに戻る").draw(Arg::center = Vec2(600, 500));
+		if (MouseL.down()) {
+			scene = TITLE;
+			Scene::SetBackground(Palette::Skyblue);
+		}
 	}
 };
 
@@ -43,7 +59,7 @@ class Game {
 	static constexpr int okAreaSize = 100;//大丈夫エリアの大きさ
 	static constexpr int maxHP = 1000;//HPの最大値
 	static constexpr int maxNumberOfBall = 9;//ボールの最大数 レベルの最大値でもある
-	static constexpr int timeLimit = 30;//制限時間の秒数
+	static constexpr int timeLimit = 1;//制限時間の秒数
 	int restHP;
 	const Font font100 = Font(100);//フォント
 	Stopwatch stopwatch;
@@ -291,6 +307,7 @@ public:
 void Main()
 {
 	Window::Resize(Size(windowWidth,windowHeight));//windowのサイズは1200x900にする(あとで上の方に定数用意するかも)
+	scene = PLAYING_GAME;
 	Game game;//ゲーム本体の本体
 	Result result;//結果表示用
 	game.init();
@@ -305,8 +322,7 @@ void Main()
 		case TITLE:
 			break;
 		case RESULT:
-			break;
-		case LANKING:
+			result.showResult();
 			break;
 		case GAMEOVER:
 			result.gameOver();
