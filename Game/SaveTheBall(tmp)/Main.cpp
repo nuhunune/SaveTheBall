@@ -2,11 +2,14 @@
 static constexpr int windowWidth = 1200;
 static constexpr int windowHeight = 900;
 int score;//ゲームの点数
+int bestScore;
+
 
 
 //各シーンを表す列挙型
 enum Scenes {
 	PLAYING_GAME//ゲーム中
+	,START_GAME//ゲーム開始前の1フレーム
 	,TITLE//タイトル
 	,RESULT//結果表示(点数など)
 	,GAMEOVER//HPが0になったとき
@@ -18,7 +21,16 @@ Scenes scene;
 
 //タイトル表示用クラス
 class Title {
-
+	const Font font150 = Font(150);
+	const Font font50 = Font(50);
+public:
+	void showTitle() {
+		font150(U"Save The Ball").draw(Arg::center = Vec2(600, 350));//タイトルの表示
+		font50(U"クリックしてスタート").draw(Arg::center = Vec2(600, 500));//指示の表示
+		if (MouseL.down()) {
+			scene = START_GAME;
+		}
+	}
 };
 
 //結果表示用クラス
@@ -28,24 +40,26 @@ class Result {
 public:
 	void gameOver() {
 		font200(U"Game Over!").draw(Arg::center = Vec2(600,450));
-		font50(U"クリックして下さい").draw(Arg::center = Vec2(600, 600));
+		font50(U"クリックして下さい").draw(Arg::center = Vec2(600, 600));//指示の表示
 		if (MouseL.down()) {
 			scene = RESULT;
 		}
 	}
 	void timeUp() {
 		font200(U"Time Up!").draw(Arg::center = Vec2(600, 450));
-		font50(U"クリックして下さい").draw(Arg::center = Vec2(600, 600));
+		font50(U"クリックして下さい").draw(Arg::center = Vec2(600, 600));//指示の表示
 		if (MouseL.down()) {
 			scene = RESULT;
 		}
 	}
 	void showResult() {
-		font200(ToString(score)+U"点!").draw(Arg::center = Vec2(600, 350));
-		font50(U"クリックしてタイトルに戻る").draw(Arg::center = Vec2(600, 500));
+		font200(ToString(score)+U"点!").draw(Arg::center = Vec2(600, 350));//点数の表示
+		font50(U"これまでの自己べスト:"+ToString(bestScore)+U"点").draw(Arg::center = Vec2(600, 470));//過去のベストスコアの表示
+		font50(U"クリックしてタイトルに戻る").draw(Arg::center = Vec2(600, 600));//指示の表示
 		if (MouseL.down()) {
 			scene = TITLE;
 			Scene::SetBackground(Palette::Skyblue);
+			bestScore = std::max(score, bestScore);//自己ベストを更新
 		}
 	}
 };
@@ -53,13 +67,13 @@ public:
 //ゲームの本体クラス
 class Game {
 	static constexpr int ballSize = 70;//ボールの大きさ(すべて同じ)
-	static constexpr double speedOfBalls = 4;//1フレーム当たりのボールの移動距離(すべて同じ)
+	static constexpr double speedOfBalls = 5;//1フレーム当たりのボールの移動距離(すべて同じ)
 	static constexpr int rightEdgeOfMainScreen=1200, leftEdgeOfMainScreen=200, topEdgeOfMainScreen=0, bottomEdgeOfMainScreen=750;//ゲーム本体画面の範囲
 	static constexpr int safeAreaSize = 85;//安全エリアの大きさ
 	static constexpr int okAreaSize = 100;//大丈夫エリアの大きさ
 	static constexpr int maxHP = 1000;//HPの最大値
 	static constexpr int maxNumberOfBall = 9;//ボールの最大数 レベルの最大値でもある
-	static constexpr int timeLimit = 1;//制限時間の秒数
+	static constexpr int timeLimit = 40;//制限時間の秒数
 	int restHP;
 	const Font font100 = Font(100);//フォント
 	Stopwatch stopwatch;
@@ -157,19 +171,21 @@ class Game {
 		Circle tmpCircle;//一時的に、他の円と交差するか調べるために作る円
 		int32 randomX;//ランダム生成した座標を格納する変数
 		int32 randomY;
+		double randomTheta;
 		bool ok;//どの円にも潜り込まないことを確かめる
 		while (true)
 		{
 			randomX = Random<int32>(leftEdgeOfMainScreen + ballSize, rightEdgeOfMainScreen - ballSize);//座標をランダム生成
 			randomY = Random<int32>(topEdgeOfMainScreen + ballSize, bottomEdgeOfMainScreen - ballSize);
+			randomTheta = Random<double>(0, std::_Pi * 2);//ランダムな角度
 			ok = true;
 			for (int i = 0; i < balls.size(); i++) {
-				if (std::sqrt((balls[i].x - randomX) * (balls[i].x - randomX) + (balls[i].y - randomY) * (balls[i].y - randomY)) < ballSize * 2 + 10) {
+				if (std::sqrt((balls[i].x - randomX) * (balls[i].x - randomX) + (balls[i].y - randomY) * (balls[i].y - randomY)) < ballSize * 2 + 10) {//他の円と重なっていたら
 					ok = false;
 				}
 			}
 			if (ok) {
-				balls << Ball(randomX, randomY, 0, 4);
+				balls << Ball(randomX, randomY, speedOfBalls*std::cos(randomTheta), speedOfBalls*std::sin(randomTheta));//方向についてランダムに新たなボールを作成
 				break;
 			}
 		}
@@ -220,6 +236,7 @@ public:
 		restHP = maxHP;
 		score = 0;
 		stopwatch = Stopwatch(true);
+		balls.clear();
 		balls << Ball(800, 450, 2, 3);
 	}
 	void update(){//ゲームの更新
@@ -243,7 +260,7 @@ public:
 		//判定
 		Circle ballToSurround(balls[0].x, balls[0].y, ballSize);
 		if (safeArea.contains(ballToSurround)) {//安全エリア内にあるとき
-			restHP+=3;//HPを3増やす
+			restHP+=2;//HPを2増やす
 			score += balls.size() * 3;//スコアをレベル数の三倍増やす
 		}
 		else if (!okArea.contains(ballToSurround)) {//大丈夫エリア外の時
@@ -307,19 +324,25 @@ public:
 void Main()
 {
 	Window::Resize(Size(windowWidth,windowHeight));//windowのサイズは1200x900にする(あとで上の方に定数用意するかも)
-	scene = PLAYING_GAME;
+	scene = TITLE;
+	bestScore = 0;
+	Scene::SetBackground(Palette::Skyblue);
+	Title title;//タイトル表示用
 	Game game;//ゲーム本体の本体
 	Result result;//結果表示用
-	game.init();
-	while (System::Update())//switch文で分岐しよう
+	while (System::Update())
 	{
-		switch (scene)
+		switch (scene)//sceneの値によって分岐
 		{
 		case PLAYING_GAME:
-			Scene::SetBackground(Palette::Skyblue);
 			game.update();
 			break;
 		case TITLE:
+			title.showTitle();
+			break;
+		case START_GAME:
+			game.init();
+			scene = PLAYING_GAME;
 			break;
 		case RESULT:
 			result.showResult();
